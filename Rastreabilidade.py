@@ -25,6 +25,8 @@ if st.button("🔄 Recarregar Planilha"):
     st.session_state.df_lotes = carregar_lotes_validade()
     st.success("Planilha recarregada com sucesso!")
 
+st.link_button("Rastreabilidade Remessa", "https://rastreabilidade-remessa-lenvie.streamlit.app/")
+
 # Usa os dados sempre do session_state
 df_lotes = st.session_state.df_lotes
 
