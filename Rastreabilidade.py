@@ -22,6 +22,7 @@ if "df_lotes" not in st.session_state:
 
 # Botão manual para recarregar a planilha
 if st.button("🔄 Recarregar Planilha"):
+    st.cache_data.clear()
     st.session_state.df_lotes = carregar_lotes_validade()
     st.success("Planilha recarregada com sucesso!")
 
