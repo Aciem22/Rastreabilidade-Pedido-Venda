@@ -21,7 +21,11 @@ O sistema permite consultar clientes, listar remessas, editar dados de rastreabi
 🧩 Tecnologias Usadas
 
 🐍 Python 3.11+ - Linguagem principal
+
 🎈 Streamlit - Interface web
+
 🌐 Requests - Comunicação com API Omie
+
 🧠 Pandas - Manipulação de dados
+
 💾 JSON - Estrutura das requisições
