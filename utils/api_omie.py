@@ -49,7 +49,7 @@ def alterar_pedido(codigo_pedido, novos_produtos, quantidade_caixas, tentativas=
             "frete": {
                 "quantidade_volumes": quantidade_caixas,
                 "especie_volumes": "CAIXAS",
-                "marca_volumes": "HIGOR"
+                "marca_volumes": "LENVIE"
             },
             "det": novos_produtos
         }
