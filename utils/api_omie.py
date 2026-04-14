@@ -9,7 +9,7 @@ import re
 APP_KEY = st.secrets["APP_KEY"]
 APP_SECRET = st.secrets["APP_SECRET"]
 
-def consultar_pedido(numero_pedido, tentativas=5):
+def consultar_pedido(numero_pedido, tentativas=3):
     url = "https://app.omie.com.br/api/v1/produtos/pedido/"
     payload = {
         "call": "ConsultarPedido",
@@ -48,7 +48,8 @@ def alterar_pedido(codigo_pedido, novos_produtos, quantidade_caixas, tentativas=
             },
             "frete": {
                 "quantidade_volumes": quantidade_caixas,
-                "especie_volumes": "CAIXAS"
+                "especie_volumes": "CAIXAS",
+                "marca_volumes": "HIGOR"
             },
             "det": novos_produtos
         }
