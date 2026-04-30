@@ -12,29 +12,31 @@ import json
 import tempfile
 import pandas as pd
 from utils.api_omie import consultar_pedido, alterar_pedido
-from utils.sheets import carregar_lotes_validade
+from utils.neon_select import carregar_mapa_lotes
+
 
 st.set_page_config(page_title="Cadastro de Lotes", layout="wide")
 
-# Se ainda não carregou a planilha, carrega uma vez
-if "df_lotes" not in st.session_state:
-    st.session_state.df_lotes = carregar_lotes_validade()
-
-# Botão manual para recarregar a planilha
-if st.button("🔄 Recarregar Planilha"):
-    st.cache_data.clear()
-    st.session_state.df_lotes = carregar_lotes_validade()
-    st.success("Planilha recarregada com sucesso!")
-
 st.link_button("Rastreabilidade Remessa", "https://rastreabilidade-remessa-lenvie.streamlit.app/")
 
-# Usa os dados sempre do session_state
-df_lotes = st.session_state.df_lotes
-
-# Carrega os dados da planilha uma vez só
-df_lotes = carregar_lotes_validade()
-
 st.title("🔍 Cadastro de Rastreabilidade")
+
+if "mapa_lotes" not in st.session_state:
+    st.session_state.mapa_lotes = carregar_mapa_lotes()
+
+mapa_lotes = st.session_state.mapa_lotes
+
+if st.button("🔄 Recarregar Base"):
+    carregar_mapa_lotes.clear()
+
+    if "mapa_lotes" in st.session_state:
+        del st.session_state["mapa_lotes"]
+
+    if "produtos_info_cache" in st.session_state:
+        del st.session_state["produtos_info_cache"]
+
+    st.success("Base recarregada com sucesso!")
+    st.rerun()
 
 # --- Campo de número (atualiza o texto conforme seleção) ---
 numero_pedido = st.text_input(f"Digite o número da Venda:")
@@ -67,8 +69,6 @@ if numero_pedido:
     qtd_itens = sum(item.get("produto",{}).get("quantidade",0) for item in itens)
 
     st.markdown(f"### Pedido Nº {numero_pedido} — {qtd_skus} SKU(s) | {qtd_itens} item(ns)")
-    st.markdown("""<div style="background-color: rgb(23 45 67); color: rgb(176 235 255);padding: 12px;border-radius: 6px;border-left: 5px solid #0288d1;font-size: 16px;">
-        🚨 O campo de <b>Validade</b> está no padrão ISO - Ano/Mês/Dia.</div> <br>""", unsafe_allow_html=True)
 
     # Ordena apenas para exibição
     itens_com_indices = list(enumerate(itens))
@@ -105,36 +105,62 @@ if numero_pedido:
                     st.text(f"{descricao} ({codigo})")
                 with col2:
                     try:
-                        filtro_lote = df_lotes.loc[df_lotes["Código do Produto"] == codigo, "LOTE"]
-                        lote_apostrofo = filtro_lote.values[0] if not filtro_lote.empty else ""
-                        lote_sel = lote_apostrofo[1:] if lote_apostrofo else ""
-                        lote_input = st.text_input("Lote", value=lote_sel, key=f"lote_sel_{numero_pedido}_{idx_real}")
+                        sku_norm = str(codigo).strip().upper()
+                        info = mapa_lotes.get(sku_norm, {})
+
+                        lote_existente = info.get("lote", "")
+
+                        lote_input = st.text_input(
+                            "Lote",
+                            value=lote_existente,
+                            key=f"lote_sel_{numero_pedido}_{idx_real}"
+                        )
+
                         valores_digitados[f"lote_{idx_real}"] = lote_input
-                    except (ValueError, AttributeError):
-                        lote_input = st.text_input("Lote", key=f"lote_sel_{numero_pedido}_{idx_real}")
+
+                    except Exception as e:
+                        st.warning(f"Erro ao buscar lote do SKU {codigo}: {e}")
                         valores_digitados[f"lote_{idx_real}"] = ""
 
                 with col3:
                     try:
-                        filtro_validade = df_lotes.loc[df_lotes["Código do Produto"] == codigo, "VALIDADE"]
-                        if not filtro_validade.empty:
-                            opcoes_validade = [filtro_validade.values[0], "INDEFINIDO", "NOVA DATA"]
-                            escolha = st.selectbox("Validade", opcoes_validade, key=f"validade_opcao_{numero_pedido}_{idx_real}")
+                        sku_norm = str(codigo).strip().upper()
+                        info = mapa_lotes.get(sku_norm, {})
+
+                        validade_base = info.get("validade", "")
+
+                        if validade_base:
+                            opcoes_validade = [validade_base, "INDEFINIDO", "NOVA DATA"]
+                            escolha = st.selectbox(
+                                "Validade",
+                                opcoes_validade,
+                                key=f"validade_opcao_{numero_pedido}_{idx_real}"
+                            )
 
                             if escolha in ["INDEFINIDO", "S/V", ""]:
                                 valores_digitados[f"validade_{idx_real}"] = "INDEFINIDO"
+
                             elif escolha == "NOVA DATA":
-                                nova = st.date_input("Digite nova data", key=f"validade_input_{numero_pedido}_{idx_real}")
+                                nova = st.date_input(
+                                    "Digite nova data",
+                                    key=f"validade_input_{numero_pedido}_{idx_real}"
+                                )
                                 valores_digitados[f"validade_{idx_real}"] = nova if nova else None
+
                             else:
                                 mes, ano = escolha.split("/")
                                 mes = int(mes)
                                 ano = int(ano)
-                                if ano < 100: ano += 2000
+                                if ano < 100:
+                                    ano += 2000
+
                                 ultimo_dia = calendar.monthrange(ano, mes)[1]
+
                                 valores_digitados[f"validade_{idx_real}"] = date(ano, mes, ultimo_dia)
+
                         else:
                             valores_digitados[f"validade_{idx_real}"] = "INDEFINIDO"
+
                     except Exception as e:
                         st.warning(f"Erro ao tratar validade do produto {codigo}: {e}")
 
